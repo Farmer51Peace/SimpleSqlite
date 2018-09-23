@@ -2,13 +2,15 @@ package db;
 
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Environment;
+import android.util.Log;
 
-public class BaseDaoFactory {
-    private static BaseDaoFactory instance = new BaseDaoFactory();
+public class DaoFactory {
+    private static final String TAG = "DaoFactory";
+    private static DaoFactory instance = new DaoFactory();
     private SQLiteDatabase database;
     private String sqliteDatabasePath;
 
-    private BaseDaoFactory() {
+    private DaoFactory() {
         sqliteDatabasePath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/teacher.db";
         initDatabase();
     }
@@ -17,20 +19,26 @@ public class BaseDaoFactory {
         this.database = SQLiteDatabase.openOrCreateDatabase(sqliteDatabasePath, null);
     }
 
-    public static BaseDaoFactory getInstance() {
+    public static DaoFactory getInstance() {
         return instance;
     }
 
-    public <T extends BaseDao<M>, M> T getDbHelper(Class<T> daoClass, Class<M> entityClass) {
+    public synchronized <T extends BaseDao<M>, M> T getDbHelper(Class<T> daoClass, Class<M> entityClass) {
         BaseDao baseDao = null;
+        boolean initSuccess = false;
         try {
             baseDao = daoClass.newInstance();
-            baseDao.init(entityClass, database);
+            initSuccess = baseDao.init(entityClass, database);
         } catch (InstantiationException e) {
             e.printStackTrace();
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
-        return (T) baseDao;
+        if (initSuccess) {
+            return (T) baseDao;
+        } else {
+            Log.e(TAG, "BaseDao init failed");
+            return null;
+        }
     }
 }
